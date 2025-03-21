@@ -10,13 +10,15 @@
 //! RUST_LOG=info cargo run --release -- --prove
 //! ```
 
-use alloy_sol_types::SolType;
+use std::{fs, path::PathBuf};
+
 use clap::Parser;
-use fibonacci_lib::PublicValuesStruct;
 use sp1_sdk::{include_elf, ProverClient, SP1Stdin};
+use stwo_cairo_prover::cairo_air::CairoProof;
+use stwo_prover::core::{pcs::PcsConfig, vcs::blake2_merkle::Blake2sMerkleHasher};
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
-pub const FIBONACCI_ELF: &[u8] = include_elf!("fibonacci-program");
+pub const STWO_VERIFIER_ELF: &[u8] = include_elf!("stwo-verifier");
 
 /// The arguments for the command.
 #[derive(Parser, Debug)]
@@ -28,8 +30,11 @@ struct Args {
     #[clap(long)]
     prove: bool,
 
-    #[clap(long, default_value = "20")]
-    n: u32,
+    #[clap(long)]
+    proof_path: PathBuf,
+
+    #[clap(long)]
+    config_path: PathBuf,
 }
 
 fn main() {
@@ -48,42 +53,37 @@ fn main() {
     // Setup the prover client.
     let client = ProverClient::from_env();
 
+    let proof: CairoProof<Blake2sMerkleHasher> =
+        serde_json::from_slice(&fs::read(args.proof_path).unwrap()).unwrap();
+
+    let pcs_config: PcsConfig =
+        serde_json::from_slice(&fs::read(args.config_path).unwrap()).unwrap();
+
     // Setup the inputs.
     let mut stdin = SP1Stdin::new();
-    stdin.write(&args.n);
-
-    println!("n: {}", args.n);
+    stdin.write(&(proof, pcs_config));
 
     if args.execute {
         // Execute the program
-        let (output, report) = client.execute(FIBONACCI_ELF, &stdin).run().unwrap();
-        println!("Program executed successfully.");
-
-        // Read the output.
-        let decoded = PublicValuesStruct::abi_decode(output.as_slice(), true).unwrap();
-        let PublicValuesStruct { n, a, b } = decoded;
-        println!("n: {}", n);
-        println!("a: {}", a);
-        println!("b: {}", b);
-
-        let (expected_a, expected_b) = fibonacci_lib::fibonacci(n);
-        assert_eq!(a, expected_a);
-        assert_eq!(b, expected_b);
-        println!("Values are correct!");
+        let (output, report) = client.execute(STWO_VERIFIER_ELF, &stdin).run().unwrap();
+        println!("Program executed successfully. {:?}", output);
 
         // Record the number of cycles executed.
         println!("Number of cycles: {}", report.total_instruction_count());
     } else {
         // Setup the program for proving.
-        let (pk, vk) = client.setup(FIBONACCI_ELF);
+        let (pk, vk) = client.setup(STWO_VERIFIER_ELF);
 
         // Generate the proof
         let proof = client
             .prove(&pk, &stdin)
+            .groth16()
             .run()
             .expect("failed to generate proof");
 
         println!("Successfully generated proof!");
+
+        println!("{:?}", proof);
 
         // Verify the proof.
         client.verify(&proof, &vk).expect("failed to verify proof");
