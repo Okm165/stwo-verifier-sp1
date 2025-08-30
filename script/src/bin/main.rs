@@ -12,10 +12,11 @@
 
 use std::{fs, path::PathBuf};
 
+use cairo_air::CairoProof;
 use clap::Parser;
 use sp1_sdk::{include_elf, ProverClient, SP1Stdin};
-use stwo_cairo_prover::cairo_air::CairoProof;
-use stwo_prover::core::{pcs::PcsConfig, vcs::blake2_merkle::Blake2sMerkleHasher};
+use stwo_prover::core::pcs::PcsConfig;
+use stwo_prover::core::vcs::blake2_merkle::Blake2sMerkleHasher;
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
 pub const STWO_VERIFIER_ELF: &[u8] = include_elf!("stwo-verifier");
@@ -66,7 +67,7 @@ fn main() {
     if args.execute {
         // Execute the program
         let (output, report) = client.execute(STWO_VERIFIER_ELF, &stdin).run().unwrap();
-        println!("Program executed successfully. {:?}", output);
+        println!("Program executed successfully. {output:?}");
 
         // Record the number of cycles executed.
         println!("Number of cycles: {}", report.total_instruction_count());
@@ -83,7 +84,7 @@ fn main() {
 
         println!("Successfully generated proof!");
 
-        println!("{:?}", proof);
+        println!("{proof:?}");
 
         // Verify the proof.
         client.verify(&proof, &vk).expect("failed to verify proof");
