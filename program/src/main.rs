@@ -8,11 +8,18 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use stwo_cairo_prover::cairo_air::{verifier::verify_cairo, CairoProof};
-use stwo_prover::core::pcs::PcsConfig;
-use stwo_prover::core::vcs::blake2_merkle::{Blake2sMerkleChannel, Blake2sMerkleHasher};
+use cairo_air::{verifier::verify_cairo, CairoProof, PreProcessedTraceVariant};
+use stwo_prover::core::{
+    pcs::PcsConfig,
+    vcs::blake2_merkle::{Blake2sMerkleChannel, Blake2sMerkleHasher},
+};
 
 pub fn main() {
     let (proof, pcs_config) = sp1_zkvm::io::read::<(CairoProof<Blake2sMerkleHasher>, PcsConfig)>();
-    verify_cairo::<Blake2sMerkleChannel>(proof, pcs_config).unwrap();
+    verify_cairo::<Blake2sMerkleChannel>(
+        proof,
+        pcs_config,
+        PreProcessedTraceVariant::CanonicalWithoutPedersen,
+    )
+    .unwrap();
 }

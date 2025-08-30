@@ -12,12 +12,12 @@ path = "src/bin/main.rs"
 clap = { version = "4.0", features = ["derive", "env"] }
 dotenv = "0.15.0"
 hex = "0.4.3"
-serde = { version = "1.0.200", default-features = false, features = ["derive"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
-sp1-sdk = "4.0.0"
-stwo_cairo_prover.workspace = true
+sp1-sdk = "5.0.8"
+cairo-air.workspace = true
 stwo-prover.workspace = true
 tracing = "0.1.40"
 
 [build-dependencies]
-sp1-build = "4.0.0"
+sp1-build = "5.0.8"
